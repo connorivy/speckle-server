@@ -16,9 +16,9 @@
   "scripts": {
     "lint": "eslint . --ext .js,.ts",
     "build:dev": "rollup --config",
-    "build": "NODE_ENV=production rollup --config",
+    "build": "cross-env NODE_ENV=production rollup --config",
     "dev": "rollup --config --watch",
-    "example": "EXAMPLE_BUILD=1 rollup --config && http-server ./examples/browser -p 3031 -o"
+    "example": "cross-env EXAMPLE_BUILD=1 rollup --config && http-server ./examples/browser -p 3031 -o"
   },
   "keywords": [
     "speckle",
@@ -39,6 +39,7 @@
     "@rollup/plugin-babel": "^5.3.1",
     "@rollup/plugin-commonjs": "^21.0.3",
     "@rollup/plugin-node-resolve": "^13.1.3",
+    "cross-env": "^7.0.3",
     "eslint": "^8.11.0",
     "eslint-config-prettier": "^8.5.0",
     "http-server": "^14.1.0",

@@ -9,6 +9,7 @@ packages/objectloader/dist
 .nyc_output
 coverage/
 .idea
+.vs
 test-queries
 
 **/.DS_Store
