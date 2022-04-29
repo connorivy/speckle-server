@@ -3,13 +3,13 @@
     <v-sheet color="primary">
       <v-toolbar color="primary" dark flat>
         <v-app-bar-nav-icon style="pointer-events: none">
-          <v-icon>mdi-share-variant</v-icon>
+          <v-icon>mdi-bookshelf</v-icon>
         </v-app-bar-nav-icon>
         <v-toolbar-title>Search the Plugin Library</v-toolbar-title>
         <v-spacer></v-spacer>
         <v-btn icon @click="$emit('close')"><v-icon>mdi-close</v-icon></v-btn>
       </v-toolbar>
-      <v-card-text class="mt-0 mb-0 px-2">
+      <v-card-text class="mt-0 mb-0 px-2" style="padding-bottom: 0px;">
         <v-text-field
           v-model="pluginName"
           dark
@@ -21,37 +21,16 @@
           @keyup="populatePluginList()"
         ></v-text-field>
       </v-card-text>
-    </v-sheet>
-    <v-sheet v-if="stream">
-      <v-toolbar
-        v-tooltip="
-          `${
-            stream.role !== 'stream:owner'
-              ? 'You do not have the right access level (' +
-                stream.role +
-                ') to add collaborators.'
-              : ''
-          }`
-        "
-        flat
-      >
-        <v-app-bar-nav-icon style="pointer-events: none">
-          <v-icon>mdi-account-group</v-icon>
-        </v-app-bar-nav-icon>
-        <v-toolbar-title>
-          Collaborators
-        </v-toolbar-title>
-        <v-spacer></v-spacer>
+      <v-card-text class="px-2" style="padding-top: 0px;">
         <v-btn
-          color="primary"
           text
           rounded
-          :disabled="stream.role !== 'stream:owner'"
-          @click="install()"
+          @click="runPlugin()"
         >
-          Manage
+          <v-icon>mdi-folder-open</v-icon>
+          run existing plugin
         </v-btn>
-      </v-toolbar>
+      </v-card-text>
     </v-sheet>
     <v-sheet
       v-if="stream"
@@ -78,23 +57,16 @@
           text
           rounded
           :disabled="stream.role !== 'stream:owner'"
-          @click="install(item.name)"
+          @click="downloadPlugin(item.name, item.version)"
         >
-          Install
+          Download
         </v-btn>
       </v-toolbar>
-      <stream-invite-dialog
-        ref="streamInviteDialog"
-        :stream-id="$route.params.streamId"
-      />
     </v-sheet>
   </v-card>
 </template>
 <script>
-import gql from 'graphql-tag'
-import { COMMON_STREAM_FIELDS } from '@/graphql/streams'
 import { flow, map, sortBy } from 'lodash/fp'
-import os from 'os'
 
 export default {
   name: 'pluginLibrary',
@@ -133,6 +105,7 @@ export default {
         }))
       )(json.objects)
     )
+    this.populatePluginList()
   },
   computed: {
     streamUrl() {
@@ -151,209 +124,65 @@ export default {
   methods: {
     async populatePluginList() {
       this.searchResultsSubset = []
-      // console.log(this.pluginName)
       const value = await this.searchResults
-      // console.log(value)
-        for (var index in value) {
-          // console.log(value[index]['name'].slice(0,8 + this.pluginName.length))
-          if (value[index]['name'].slice(0,8 + this.pluginName.length) == 'cerebro-' + this.pluginName) {
-            // console.log(value[index]['name'])
-            this.searchResultsSubset.push(value[index])
-            if (this.searchResultsSubset.length >= 4) break
+      for (var index in value) {
+        if (value[index]['name'].slice(0,8 + this.pluginName.length) == 'cerebro-' + this.pluginName) {
+          // console.log(value[index]['name'])
+          this.searchResultsSubset.push(value[index])
+          if (this.searchResultsSubset.length >= 4) break
+        }
+      }
+    },
+
+    downloadPlugin(name, version) {
+      window.open(`https://registry.npmjs.org/${name}/-/${name}-${version}.tgz`, "_blank");
+    },
+
+    // right now you have to navigate to the javascript file to run your plugin
+    // and you have to redo that everytime you want to run it. It's a bad system and its just for demo
+    // I think it makes sense to move the plugin managment to the 'speckle manager' desktop app
+    // so we can save plugins to a known location on the user's machine and access them from there 
+    // so there is no need for the user to open a file explorer
+    runPlugin() {
+      var script = document.getElementById("pluginScript");
+
+      // define script if null
+      if (!script) {
+        script = document.createElement('script')
+        script.id = 'pluginScript'
+        // script.async = true;
+        document.body.appendChild(script)
+      }
+
+      // create file dialog element
+      var input = document.createElement('input')
+      input.type = 'file'
+      input.onchange = e => { 
+        // getting a hold of the file reference
+        var file = e.target.files[0]
+
+        // read file
+       var reader = new FileReader();
+       reader.readAsText(file,'UTF-8');
+
+       // when file is done reading...
+        reader.onload = readerEvent => {
+          var content = readerEvent.target.result;
+          script.innerHTML = content;
+
+          // try to run the user's plugin
+          try {
+            pluginMain(window.__viewer, this.$store)
+            console.log('plugin ran sucessfully')
+          } catch (error) {
+            console.log('Plugin failed with error ', error)
           }
         }
-      // console.log(this.searchResultsSubset)
-      // const electronApp = remote ? remote.app : app
-      // const pluginsPath = path.join(electronApp.getPath('userData'), 'plugins')
-      // console.log(electronApp, pluginsPath)
-      console.log(os.homedir())
-      console.log(process.env.LOCALAPPDATA)
-    },
-    installPlugin() {
-      const script = document.createElement('script');
-      // script.src = scriptUrl; // fully qualified path to the loaded script
-
-      script.async = true;
-      document.body.appendChild(script);
-    },
-    /**
-     * Install npm package
-     * @param  {String} name Name of package in npm registry
-     *
-     * @param  {Object} options
-     *             version {String} Version of npm package. Default is latest version
-     *             middleware {Function<Promise>}
-     *               Function that returns promise. Called when package's archive is extracted
-     *               to temp folder, but before moving to real location
-     * @return {Promise}
-     */
-    install(name, options = {}) {
-      // console.log(window.__viewer)
-      // console.log(this.$store)
-
-      var v = window.__viewer
-      var maxLength = 0
-      var maxLengthId = 0
-      for (var index in v.sceneManager.sceneObjects.allSolidObjects.children) {
-        // console.log(v.sceneManager.sceneObjects.allSolidObjects.children[index].userData.baseLine)
-        var length = this.getLength(v.sceneManager.sceneObjects.allSolidObjects.children[index].userData)
-        if (length > maxLength) {
-          maxLength = length
-          maxLengthId = v.sceneManager.sceneObjects.allSolidObjects.children[index].userData.id
-        }
       }
-
-      // // v.applyFilter({filterBy: {id : maxLengthId}, ghostOthers: true})
-      this.$store.commit('isolateObjects', {
-          filterKey: '__parents',
-          filterValues: [maxLengthId]
-        })
-      console.log(maxLength, maxLengthId)
-
-      // state.appliedFilter = {filterBy: {'speckle_type': 'Objects.Geometry.Line'}, ghostOthers: true }
-      // viewer.applyFilter({filterBy: {'speckle_type': 'Objects.Geometry.Line'}, ghostOthers: true })
-
-      // const dir = '/'
-      // const API_BASE = 'http://registry.npmjs.org/'
-      // let versionToInstall
-      // const version = options.version || null
-      // const middleware = options.middleware || (() => Promise.resolve())
-      // console.group('[npm] Install package', name)
-      // return fetch(`${API_BASE}${name}`)
-      //   .then(response => console.log(response))
-      //   .then((json) => {
-      //     versionToInstall = version || json['dist-tags'].latest
-      //     console.log('Version:', versionToInstall)
-      //     return installPackage(
-      //       json.versions[versionToInstall].dist.tarball,
-      //       path.join(dir, 'node_modules', name),
-      //       middleware
-      //     )
-      //   })
-      //   .then(() => {
-      //     const json = getConfig()
-      //     json.dependencies[name] = versionToInstall
-      //     console.log('Add package to dependencies')
-      //     setConfig(json)
-      //     console.groupEnd()
-      //   })
-      //   .catch((err) => {
-      //     console.log('Error in package installation')
-      //     console.log(err)
-      //     console.groupEnd()
-      //   })
-    },
-    getLength(obj) {
-      // console.log(obj)
-      if (obj.hasOwnProperty('baseLine')) {
-        return Math.sqrt( (obj.baseLine.start.x - obj.baseLine.end.x )**2 + 
-        (obj.baseLine.start.y - obj.baseLine.end.y )**2 + 
-        (obj.baseLine.start.z - obj.baseLine.end.z )**2 )
-      }
-      return 0
-    },
-    installPackage(tarPath, destination, middleware) {
-      console.log(`Extract ${tarPath} to ${destination}`)
-      return new Promise((resolve, reject) => {
-        const packageName = path.parse(destination).name
-        const tempPath = `${os.tmpdir()}/${packageName}`
-        console.log(`Download and extract to temp path: ${tempPath}`)
-        https.get(tarPath, (stream) => {
-          console.log(`STREAM`, stream)
-          const result = stream
-            // eslint-disable-next-line new-cap
-            .pipe(zlib.Unzip())
-            .pipe(tar.extract(tempPath, {
-              map: formatPackageFile
-            }))
-          result.on('error', reject)
-          result.on('finish', () => {
-            middleware().then(() => {
-              console.log(`Move ${tempPath} to ${destination}`)
-              mv(tempPath, destination, err => err ? reject(err) : resolve())
-            })
-          })
-        })
-      })
-    },
-    copyToClipboard(e) {
-      // this.$clipboard(e.target.value)
-      // console.log(e.target.value)
-      e.target.select()
-      document.execCommand('copy')
-    },
-    goToStreamCollabs() {
-      this.$router.push(`/streams/${this.$route.params.streamId}/collaborators`)
+      input.click();
       this.$emit('close')
+      return false;
     },
-    showStreamInviteDialog() {
-      this.$refs.streamInviteDialog.show()
-    },
-    getIframeUrl() {
-      const resourceId = this.$route.params.resourceId
-      if (!resourceId) return null
-      let base = `${window.location.origin}/embed?stream=${
-        this.$route.params.streamId
-      }&${this.$resourceType(resourceId)}=${this.$route.params.resourceId}`
-
-      if (this.$route.query.overlay) {
-        base += `&overlay=${this.$route.query.overlay}`
-      }
-      if (this.$route.query.c) {
-        base += `&c=${encodeURIComponent(this.$route.query.c)}`
-      }
-      if (this.$route.query.filter) {
-        base += `&filter=${encodeURIComponent(this.$route.query.filter)}`
-      }
-
-      return `<iframe src="${base}" width="600" height="400"></iframe>`
-    },
-    async changeVisibility() {
-      this.swapPermsLoading = true
-
-      const newIsPublic = !this.stream.isPublic
-      try {
-        await this.$apollo.mutate({
-          mutation: gql`
-            mutation editDescription($input: StreamUpdateInput!) {
-              streamUpdate(stream: $input)
-            }
-          `,
-          variables: {
-            input: {
-              id: this.$route.params.streamId,
-              isPublic: newIsPublic
-            }
-          },
-          optimisticResponse: {
-            __typename: 'Mutation',
-            streamUpdate: newIsPublic
-          },
-          update: (cache, { data: { streamUpdate: isSuccessFul } }) => {
-            // Update stream public value in cache
-            const normalizedId = `Stream:${this.stream.id}`
-            const cachedStream = cache.readFragment({
-              id: normalizedId,
-              fragment: COMMON_STREAM_FIELDS
-            })
-
-            cache.writeFragment({
-              id: normalizedId,
-              fragment: COMMON_STREAM_FIELDS,
-              data: {
-                ...cachedStream,
-                isPublic: isSuccessFul ? newIsPublic : !newIsPublic
-              }
-            })
-          }
-        })
-      } catch (e) {
-        this.$eventHub.$emit('notification', {
-          text: e.message ? e.message : 'Something went wrong.'
-        })
-      }
-      this.swapPermsLoading = false
-    }
   }
 }
 </script>
