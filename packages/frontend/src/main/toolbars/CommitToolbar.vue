@@ -77,6 +77,49 @@
           <span class="hidden-md-and-down">Edit</span>
         </v-btn>
       </div>
+      <div class="text-truncate flex-shrink-0 hidden-xs-only">
+        <!-- <user-avatar
+          :id="stream.commit.authorId"
+          :avatar="stream.commit.authorAvatar"
+          :name="stream.commit.authorName"
+          :size="20"
+        /> -->
+        <!-- <span class="caption mr-1">
+          <timeago :datetime="stream.commit.createdAt"></timeago>
+        </span> -->
+        <!-- <source-app-avatar :application-name="stream.commit.sourceApplication" /> -->
+        <commit-received-receipts
+          :commit-id="stream.commit.id"
+          :stream-id="stream.id"
+        />
+        <v-btn
+          v-if="
+            stream &&
+            stream.role !== 'stream:reviewer' &&
+            stream.commit.authorId === $userId()
+          "
+          v-tooltip="'Plugin Library'"
+          text
+          elevation="0"
+          color="primary"
+          small
+          rounded
+          :fab="$vuetify.breakpoint.mdAndDown"
+          @click="pluginLibrary = true"
+          dark
+        >
+          <v-icon>
+            mdi-connection
+          </v-icon>
+        </v-btn>
+        <v-dialog
+          v-model="pluginLibrary"
+          max-width="600"
+          :fullscreen="$vuetify.breakpoint.xsOnly"
+        >
+          <plugin-library-dialog :stream="stream" @close="pluginLibrary = false" />
+        </v-dialog>
+      </div>
       <div class="text-truncate flex-shrink-0 hidden-sm-and-up">
         <v-btn icon @click="showCommitInfo = true">
           <v-icon small>mdi-information</v-icon>
@@ -164,7 +207,8 @@ export default {
     SourceAppAvatar: () => import('@/main/components/common/SourceAppAvatar'),
     UserAvatar: () => import('@/main/components/common/UserAvatar'),
     CommitReceivedReceipts: () =>
-      import('@/main/components/common/CommitReceivedReceipts')
+      import('@/main/components/common/CommitReceivedReceipts'),
+    PluginLibraryDialog: () => import('@/main/dialogs/PluginLibrary.vue'),
   },
   props: {
     stream: {
@@ -173,7 +217,7 @@ export default {
     }
   },
   data() {
-    return { showCommitInfo: false }
+    return { showCommitInfo: false, pluginLibrary: false }
   },
   computed: {}
 }

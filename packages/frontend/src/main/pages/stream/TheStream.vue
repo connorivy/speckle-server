@@ -40,6 +40,7 @@ export default {
     return {
       error: '',
       shareStream: false,
+      pluginLibrary: false,
       branchMenuOpen: false
     }
   },
