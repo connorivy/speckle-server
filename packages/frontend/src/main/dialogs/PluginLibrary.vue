@@ -90,7 +90,7 @@ export default {
     }
   },
   created() {
-    const URL = 'https://registry.npmjs.com/-/v1/search?from=0&size=500&text=keywords:cerebro-plugin';
+    const URL = 'https://registry.npmjs.com/-/v1/search?from=0&size=500&text=keywords:speckle-plugin';
     console.log(URL)
     this.searchResults = fetch(URL)
       .then(response => response.json())
@@ -107,26 +107,12 @@ export default {
     )
     this.populatePluginList()
   },
-  computed: {
-    streamUrl() {
-      return `${window.location.origin}/streams/${this.$route.params.streamId}`
-    },
-    myId() {
-      return localStorage.getItem('uuid')
-    },
-  },
-  mounted() {
-    this.$mixpanel.track('Share Stream', {
-      type: 'action',
-      location: this.$route.name
-    })
-  },
   methods: {
     async populatePluginList() {
       this.searchResultsSubset = []
       const value = await this.searchResults
       for (var index in value) {
-        if (value[index]['name'].slice(0,8 + this.pluginName.length) == 'cerebro-' + this.pluginName) {
+        if (value[index]['name'].slice(0,8 + this.pluginName.length) == 'speckle-' + this.pluginName) {
           // console.log(value[index]['name'])
           this.searchResultsSubset.push(value[index])
           if (this.searchResultsSubset.length >= 4) break
@@ -140,9 +126,6 @@ export default {
 
     // right now you have to navigate to the javascript file to run your plugin
     // and you have to redo that everytime you want to run it. It's a bad system and its just for demo
-    // I think it makes sense to move the plugin managment to the 'speckle manager' desktop app
-    // so we can save plugins to a known location on the user's machine and access them from there 
-    // so there is no need for the user to open a file explorer
     runPlugin() {
       var script = document.getElementById("pluginScript");
 
@@ -172,7 +155,7 @@ export default {
 
           // try to run the user's plugin
           try {
-            pluginMain(window.__viewer, this.$store)
+            plugin.pluginMain(window.__viewer, this.$store)
             console.log('plugin ran sucessfully')
           } catch (error) {
             console.log('Plugin failed with error ', error)
